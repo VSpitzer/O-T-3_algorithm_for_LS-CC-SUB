@@ -29,7 +29,6 @@ references.
 ## Install
 
 ```bash
-git clone <your-repo-url> && cd clsp-ib
 pip install -e .                # the algorithms, no dependencies
 pip install -e ".[milp]"        # also pulp, which bundles a CBC solver
 ```
