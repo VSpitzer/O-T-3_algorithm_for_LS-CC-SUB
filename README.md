@@ -221,7 +221,3 @@ Verified at the time of writing:
 * The MILP comparison path (`pulp`/`pyomo`) has been exercised against a stub
   solver but not against a real installed solver, so run
   `python -m clsp_ib.validate_milp` once yourself after installing `pulp`.
-
-## Licence
-
-No licence file is included yet -- add one before making the repository public.
