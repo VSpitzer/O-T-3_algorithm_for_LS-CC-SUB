@@ -83,15 +83,7 @@ sol = solve_T3(eq, initialisation="exact")      # bypass the Section 4 procedure
 
 Three independent checks, in increasing order of thoroughness.
 
-**1. Unit tests** -- reformulation algebra, the 2C check, T3 = T4 = exact DP,
-both initialisations, and the Section 4 seeds. 17 tests, of which 2 are skipped
-unless a MILP backend is installed:
-
-```bash
-python -m unittest discover -s tests -t . -v
-```
-
-**2. Against a MILP solver** -- the point of comparison most readers will want.
+**1. Against a MILP solver** -- the point of comparison most readers will want.
 Needs `pip install pulp` (a CBC binary ships with the wheel); the MILP is solved
 at a **zero** MIP gap so the numbers are directly comparable.
 
@@ -112,7 +104,7 @@ Without a MILP backend the MILP column is dropped and the exact DP still gives
 an independent answer. `python -m unittest tests.test_vs_milp -v` does the same
 as a test, skipping the MILP assertions if no solver is installed.
 
-**3. Randomised stress test** -- T3 (both initialisations), T4 and the exact DP
+**2. Randomised stress test** -- T3 (both initialisations), T4 and the exact DP
 over many horizons, including instances whose demand exceeds `C` so the
 demand-capping reformulation is genuinely exercised:
 
@@ -126,35 +118,9 @@ has an integral optimum. Enumerating integer production quantities and integer
 inventory levels therefore gives the true optimum, with no gap and no solver.
 It requires integral `C`, `d`, `S` and `I0`; costs may be arbitrary floats.
 
-## The `Psi_t >= 2C` condition, and why `I_0` matters
-
-The T3 algorithm is proved correct only for instances whose **potential for
-storage** -- the spread between the highest and lowest feasible inventory level
-in a period -- is at least twice the production capacity everywhere. After
-reformulation the equivalent model has `Psi_t = S_t`, so the check is
-`S_t >= 2C` for all `t`, and `check_storage_capacity` raises otherwise.
-
-The initial inventory is what makes this satisfiable. Tightening always gives
-
-```
-S_1 <= I_0 + C - d_1
-```
-
-so **`I_0 >= C + d_1` is necessary** for the condition to hold at `t = 1`. Every
-instance with `I_0 = 0` is out of scope and will be rejected. `I_0` is therefore
-kept as an explicit parameter of the equivalent model rather than being absorbed
-into the demand of the first periods.
-
-```python
-from clsp_ib.generator import random_instance, out_of_scope_instance
-
-random_instance(20, C=10, seed=0)      # in scope: I_0 = 2C, bounds in [3C, 5C]
-out_of_scope_instance(20, seed=0)      # I_0 = 0, correctly rejected
-```
-
 ## The C++ implementation
 
-`cpp/` holds the original C++ implementation of T3 and its validation harness.
+`cpp/` holds the C++ implementation of T3 and its validation harness.
 See [`cpp/README.md`](cpp/README.md). Quick version:
 
 ```bash
@@ -185,35 +151,3 @@ tests/                   unit tests and the MILP comparison test
 docs/algorithm_notes.md  where this implementation departs from the printed algorithms, and why
 ```
 
-## Notes for readers of the article
-
-`docs/algorithm_notes.md` records every place this implementation departs from
-the algorithms as printed, with the reasoning. The three that matter:
-
-* Algorithm 5 registers a candidate for `P(t0)` only inside its `while` loop,
-  which decrements `t0` first, yet line 24 minimises over `[t_min, t_max]` and
-  `t_max` can equal `t'_max`. A candidate is registered for `t'_max` as well.
-* Equation (2) prints the folded production cost as a prefix sum of the holding
-  costs; reproducing `sum_t h_t I_t` needs the suffix sum plus a constant
-  `I_0 * sum_t h_t`. `test_holding_cost_folding` pins this down.
-* Definition 2 writes the entry inventory of a subplan as `I^1 * S_{t1-1}`,
-  which has no meaning for the first subplan, and Love's decomposition assumes
-  the horizon starts empty. With `I_0 > d_{1,T}` the cheapest plan produces
-  nothing and ends at an interior inventory level, so `dag.exit_levels` offers
-  that residual level at `t2 = T`.
-
-## Status
-
-Verified at the time of writing:
-
-* 17 unit tests pass.
-* T3 (both initialisations), T4 and the exact DP agree to machine precision on
-  several hundred random instances over `T = 1..40`, including instances that
-  require demand capping and instances correctly rejected by the 2C check.
-* The C++ harness reports 0 deviations from the exact DP over 660 instances at
-  `T` in {110, 120, 150, 200}, across seven seed/bound configurations, a
-  tie-heavy cost range, and `x_on` in {0, 2, 5, 8}; it is clean under
-  AddressSanitizer and UBSan.
-* The MILP comparison path (`pulp`/`pyomo`) has been exercised against a stub
-  solver but not against a real installed solver, so run
-  `python -m clsp_ib.validate_milp` once yourself after installing `pulp`.
