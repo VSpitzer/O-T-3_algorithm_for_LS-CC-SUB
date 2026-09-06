@@ -33,9 +33,6 @@ pip install -e .                # the algorithms, no dependencies
 pip install -e ".[milp]"        # also pulp, which bundles a CBC solver
 ```
 
-Python 3.8+, and a pip new enough to read PEP 621 metadata (setuptools >= 64,
-i.e. any pip from 2022 onwards). The core package has **no dependencies**.
-
 ## Quickstart
 
 ```python
